@@ -1,0 +1,25 @@
+# Compiled binaries
+*.exe
+*.obj
+*.o
+*.out
+
+# Keep server.exe (needed to run without compiler)
+!server.exe
+
+# Temp / test files
+tempCodeRunnerFile.cpp
+test_bind.cpp
+test_parse.cpp
+test_sock.cpp
+test_server.exe
+main.exe
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editor folders
+.vscode/
+.idea/

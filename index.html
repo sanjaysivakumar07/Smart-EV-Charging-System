@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="VoltGrid Pro - State-of-the-Art Smart EV Charging Station Management Dashboard connected to native C++ backend. Features real-time battery simulation, smart grid load telemetry, DSA queue dispatching, and digital invoices.">
+    <title>VoltGrid Pro | Smart EV Charging & Grid Management Dashboard</title>
+    <!-- Google Fonts: Outfit for numbers/display, Inter for clean UI, JetBrains Mono for telemetry -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="brand-logo">
+                <div class="logo-icon-pulse">
+                    <svg viewBox="0 0 24 24" class="bolt-svg" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <div>
+                    <div class="brand-title-wrap">
+                        <h1 class="brand-title">VOLTGRID</h1>
+                        <span class="pro-badge">PRO v2.0</span>
+                    </div>
+                    <span class="brand-tagline">DSA-POWERED SMART EV CHARGING &amp; GRID TELEMETRY</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-center">
+            <div class="backend-status-pill" id="backendStatusPill" title="Click to test backend connection">
+                <span class="status-dot pulsing" id="statusDot"></span>
+                <span class="status-text" id="statusText">Connecting...</span>
+                <span class="latency-badge" id="latencyBadge">-- ms</span>
+            </div>
+            
+            <div class="simulation-toggle-pill" id="simTogglePill" title="Auto-advance charging progress simulation">
+                <span class="sim-toggle-indicator" id="simIndicator"></span>
+                <span class="sim-toggle-label">Auto-Charge:</span>
+                <span class="sim-status-text" id="simStatusText">ACTIVE</span>
+            </div>
+
+            <div class="live-clock" id="liveClock">00:00:00</div>
+        </div>
+
+        <div class="header-right">
+            <!-- Audio Toggle -->
+            <button class="btn btn-icon" id="btnAudioToggle" title="Toggle UI Sound Effects">
+                <svg id="iconAudioOn" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                <svg id="iconAudioOff" style="display:none;" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+            </button>
+
+            <!-- Export CSV -->
+            <button class="btn btn-secondary btn-sm" id="btnExportCsv" title="Export session data as CSV spreadsheet">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export CSV
+            </button>
+
+            <!-- Fast-Forward Battery Tick -->
+            <button class="btn btn-secondary btn-sm" id="btnTickBattery" title="Manually boost all active charging sessions by +10%">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+                Boost +10%
+            </button>
+
+            <!-- Simulate Batch -->
+            <button class="btn btn-secondary btn-sm" id="btnSimulateTraffic" title="Inject realistic test batch of vehicles">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Rush Hour
+            </button>
+
+            <!-- Plug In EV Modal Button -->
+            <button class="btn btn-primary" id="btnOpenAddModal">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Plug In New EV
+            </button>
+
+            <button class="btn btn-icon btn-danger-outline" id="btnResetSystem" title="Reset system state">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="main-container">
+
+        <!-- KPI Telemetry Bar -->
+        <section class="telemetry-bar">
+            <div class="metric-card">
+                <div class="metric-icon metric-icon-cyan">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Total Vehicles</span>
+                    <span class="metric-value" id="statTotalVehicles">0</span>
+                    <span class="metric-sub">Stored in Linked List</span>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon metric-icon-emerald">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Active Bays</span>
+                    <span class="metric-value" id="statChargingCount">0 / 5</span>
+                    <span class="metric-sub" id="statUtilization">0% Station Utilization</span>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon metric-icon-rose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Priority Queue</span>
+                    <span class="metric-value text-rose" id="statPriorityQueue">0</span>
+                    <span class="metric-sub">Emergency &bull; Reserved</span>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon metric-icon-amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Normal Queue</span>
+                    <span class="metric-value" id="statNormalQueue">0</span>
+                    <span class="metric-sub">FIFO Waiting Line</span>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon metric-icon-purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Completed EVs</span>
+                    <span class="metric-value" id="statCompletedCount">0</span>
+                    <span class="metric-sub">Stack History (LIFO)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hero Section: Charging Bay Station Grid -->
+        <section class="section-container">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">
+                        <span>⚡ Hardware Charging Bays</span>
+                        <span class="section-pill" id="activeBaySummary">0 Active &bull; 4 Available &bull; 1 Maintenance</span>
+                    </h2>
+                    <p class="section-subtitle">Real-time telemetry with live battery simulation, power flow metering, and automatic queue dispatch</p>
+                </div>
+
+                <!-- Bay Filter Controls -->
+                <div class="bay-filter-bar">
+                    <button class="filter-chip active" data-filter="all">All Bays (5)</button>
+                    <button class="filter-chip" data-filter="available">🟢 Available</button>
+                    <button class="filter-chip" data-filter="charging">🔵 Charging</button>
+                    <button class="filter-chip" data-filter="ccs">CCS Only</button>
+                    <button class="filter-chip" data-filter="type2">Type 2 Only</button>
+                </div>
+            </div>
+
+            <div class="stations-grid" id="stationsGrid">
+                <!-- Dynamically rendered 5 station bay cards -->
+                <div class="loading-placeholder">Connecting to C++ backend and loading charging bays...</div>
+            </div>
+        </section>
+
+        <!-- DSA Engine Section: Queues, Stack, & Registry -->
+        <section class="section-container">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">🧬 Data Structures &amp; Dispatch Engine</h2>
+                    <p class="section-subtitle">Visual inspection of C++ Linked List, Priority Queue (Comparator Max-Heap), Normal FIFO Queue, and Completed Stack</p>
+                </div>
+                <div class="tab-controls">
+                    <button class="tab-btn active" data-tab="tab-priority">
+                        <span class="tab-badge-pulse" id="badgePriorityCount">0</span>
+                        Priority Queue
+                    </button>
+                    <button class="tab-btn" data-tab="tab-normal">
+                        <span class="tab-badge" id="badgeNormalCount">0</span>
+                        Normal Queue
+                    </button>
+                    <button class="tab-btn" data-tab="tab-stack">
+                        <span class="tab-badge" id="badgeStackCount">0</span>
+                        Completed Stack
+                    </button>
+                    <button class="tab-btn" data-tab="tab-registry">
+                        <span class="tab-badge" id="badgeRegistryCount">0</span>
+                        Vehicle Registry
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 1: Priority Queue Visualizer -->
+            <div class="tab-content active" id="tab-priority">
+                <div class="dsa-card">
+                    <div class="dsa-card-header">
+                        <div>
+                            <h3 class="dsa-title">🚨 Priority Waiting Queue (Max-Heap Comparator)</h3>
+                            <p class="dsa-desc">
+                                Dispatched first when a station frees up. Ordering rule:
+                                <strong>Emergency (Weight 3) &gt; Reserved (Weight 2) &gt; Normal (Weight 1)</strong>, tie-broken by <strong>Earliest Departure Time</strong>.
+                            </p>
+                        </div>
+                        <div class="dsa-header-actions">
+                            <span class="dsa-meta-tag">std::priority_queue&lt;Vehicle, vector, PriorityCompare&gt;</span>
+                        </div>
+                    </div>
+                    <div class="queue-container" id="priorityQueueContainer">
+                        <div class="empty-state">No vehicles currently in priority queue.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Normal FIFO Queue -->
+            <div class="tab-content" id="tab-normal">
+                <div class="dsa-card">
+                    <div class="dsa-card-header">
+                        <div>
+                            <h3 class="dsa-title">🚗 Standard Waiting Queue (FIFO)</h3>
+                            <p class="dsa-desc">Standard commuter waiting line. Dispatched in First-In-First-Out order when priority queue has no compatible vehicles.</p>
+                        </div>
+                        <div class="dsa-meta-tag">std::queue&lt;Vehicle&gt;</div>
+                    </div>
+                    <div class="queue-container" id="normalQueueContainer">
+                        <div class="empty-state">No vehicles in normal waiting queue.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Completed Stack (LIFO) -->
+            <div class="tab-content" id="tab-stack">
+                <div class="dsa-card">
+                    <div class="dsa-card-header flex-between">
+                        <div>
+                            <h3 class="dsa-title">📦 Completed Vehicles Stack (LIFO)</h3>
+                            <p class="dsa-desc">Whenever an EV completes charging, it is pushed to the stack. Click any card below to view or print the <strong>Digital Charging Invoice &amp; Receipt</strong>!</p>
+                        </div>
+                        <div class="dsa-meta-tag">std::stack&lt;int&gt;</div>
+                    </div>
+                    <div class="stack-container" id="stackContainer">
+                        <div class="empty-state">No vehicles completed charging yet.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: All Vehicles Registry (Linked List) -->
+            <div class="tab-content" id="tab-registry">
+                <div class="dsa-card">
+                    <div class="dsa-card-header flex-between">
+                        <div>
+                            <h3 class="dsa-title">📋 Complete Vehicle Registry</h3>
+                            <p class="dsa-desc">Master linked list storing all registered vehicles across their entire lifecycle (Waiting &rarr; Charging &rarr; Completed).</p>
+                        </div>
+                        <div class="table-actions">
+                            <div class="status-filter-pills">
+                                <button class="tbl-filter-btn active" data-status="all">All</button>
+                                <button class="tbl-filter-btn" data-status="Charging">Charging</button>
+                                <button class="tbl-filter-btn" data-status="Waiting">Waiting</button>
+                                <button class="tbl-filter-btn" data-status="Completed">Completed</button>
+                            </div>
+                            <input type="text" id="registrySearch" class="search-input" placeholder="Search by ID, priority, connector...">
+                            <button class="btn btn-secondary btn-sm" id="btnSortDeparture">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                                Sort by Departure
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table" id="vehiclesTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Battery</th>
+                                    <th>Connector</th>
+                                    <th>Speed Req</th>
+                                    <th>Priority</th>
+                                    <th>Departure</th>
+                                    <th>Membership</th>
+                                    <th>Reservation</th>
+                                    <th>Status</th>
+                                    <th>Bay</th>
+                                    <th>Quick Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vehiclesTableBody">
+                                <tr><td colspan="11" class="text-center">No vehicles in registry.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Terminal / System Event Stream -->
+        <section class="section-container">
+            <div class="console-box">
+                <div class="console-header">
+                    <div class="console-title">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                        <span class="console-name">BACKEND TELEMETRY &amp; EVENT STREAM</span>
+                    </div>
+                    <div class="console-actions">
+                        <span class="log-count" id="logCount">0 events</span>
+                        <button class="btn btn-sm btn-ghost" id="btnClearLogs">Clear Log</button>
+                    </div>
+                </div>
+                <div class="console-body" id="consoleBody">
+                    <div class="log-line log-system"><span class="log-time">[00:00:00]</span> <span class="log-tag">[SYSTEM]</span> VoltGrid Pro telemetry listener initialized.</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal 1: Register / Plug In New EV -->
+    <div class="modal-backdrop" id="modalAddEV">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon-badge">⚡</div>
+                    <div>
+                        <h2 class="modal-title">Register &amp; Plug In EV</h2>
+                        <p class="modal-subtitle">Submit a vehicle to test connector matching and priority dispatch</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" id="btnCloseModal">&times;</button>
+            </div>
+
+            <div class="quick-presets-bar">
+                <span class="presets-label">Quick Presets:</span>
+                <button type="button" class="preset-chip" id="presetAmbulance">🚑 Ambulance (Emergency)</button>
+                <button type="button" class="preset-chip" id="presetVIP">⭐ VIP Executive</button>
+                <button type="button" class="preset-chip" id="presetTaxi">🚕 Taxi Fast Charge</button>
+                <button type="button" class="preset-chip" id="presetCommuter">🚗 Daily Commuter</button>
+            </div>
+
+            <form id="formAddVehicle">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="inputVehicleId">Vehicle ID</label>
+                        <input type="number" id="inputVehicleId" class="form-control" placeholder="e.g. 101" required min="1">
+                        <small class="form-hint">Unique numeric ID (auto-generated)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inputDeparture">Departure Time</label>
+                        <input type="time" id="inputDeparture" class="form-control" value="12:00" required>
+                        <small class="form-hint">Used for queue tie-breaking (earlier first)</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="label-with-value">
+                        <label for="rangeBattery">Current Battery Level</label>
+                        <span class="battery-val-pill" id="batteryValDisplay">45%</span>
+                    </div>
+                    <div class="battery-slider-wrap">
+                        <input type="range" id="rangeBattery" class="slider" min="5" max="95" value="45">
+                        <div class="battery-progress-bar">
+                            <div class="battery-progress-fill" id="batteryFill" style="width: 45%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Connector Type</label>
+                        <div class="radio-card-group">
+                            <label class="radio-card active" id="cardCCS">
+                                <input type="radio" name="connectorType" value="CCS" checked>
+                                <span class="card-title">CCS Combo</span>
+                                <span class="card-desc">DC Fast / Medium Compatible</span>
+                            </label>
+                            <label class="radio-card" id="cardType2">
+                                <input type="radio" name="connectorType" value="Type2">
+                                <span class="card-title">Type 2</span>
+                                <span class="card-desc">Mennekes European Standard</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Speed Requirement</label>
+                        <div class="radio-card-group">
+                            <label class="radio-card active" id="cardReqFast">
+                                <input type="radio" name="chargingRequirement" value="Fast" checked>
+                                <span class="card-title">⚡ Fast Charge</span>
+                                <span class="card-desc">Requires 150kW DC hardware bay</span>
+                            </label>
+                            <label class="radio-card" id="cardReqNormal">
+                                <input type="radio" name="chargingRequirement" value="Normal">
+                                <span class="card-title">🔋 Normal</span>
+                                <span class="card-desc">Accepts 50kW or 150kW speeds</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Priority Class</label>
+                    <div class="priority-selector-group">
+                        <label class="priority-pill pill-emergency">
+                            <input type="radio" name="priority" value="Emergency">
+                            <span>🚨 Emergency (Weight 3)</span>
+                        </label>
+                        <label class="priority-pill pill-reserved">
+                            <input type="radio" name="priority" value="Reserved">
+                            <span>⭐ Reserved (Weight 2)</span>
+                        </label>
+                        <label class="priority-pill pill-normal active">
+                            <input type="radio" name="priority" value="Normal" checked>
+                            <span>🚗 Normal (Weight 1)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="selectMembership">Membership Status</label>
+                        <select id="selectMembership" class="form-control">
+                            <option value="Regular">Regular Member</option>
+                            <option value="Premium">Premium Member (VIP)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="selectReservation">Advance Reservation?</label>
+                        <select id="selectReservation" class="form-control">
+                            <option value="No">No Reservation</option>
+                            <option value="Yes">Yes, Confirmed Slot</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-submit-ev" id="btnSubmitEV">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Plug In &amp; Dispatch
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Digital Invoice / Session Receipt (NEW HIGH-UTILITY FEATURE) -->
+    <div class="modal-backdrop" id="modalReceipt">
+        <div class="modal-card receipt-modal-card">
+            <div class="receipt-header">
+                <div class="receipt-logo">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--cyan-primary)" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <span>VOLTGRID PRO</span>
+                </div>
+                <div class="receipt-status-badge">PAID &bull; COMPLETED</div>
+                <button class="modal-close-btn" id="btnCloseReceipt">&times;</button>
+            </div>
+
+            <div class="receipt-body" id="receiptContent">
+                <!-- Dynamically filled receipt content -->
+            </div>
+
+            <div class="receipt-footer">
+                <button class="btn btn-secondary" id="btnPrintReceipt">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Print Receipt
+                </button>
+                <button class="btn btn-primary" id="btnCloseReceiptBtn">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
